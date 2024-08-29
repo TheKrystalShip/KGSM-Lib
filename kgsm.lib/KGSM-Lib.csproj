@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>TheKrystalShip.KGSM.Lib</PackageId>
+    <Authors>Heisenberg</Authors>
+    <Version>0.0.1-alpha</Version>
+    <PackageProjectUrl>https://github.com/TheKrystalShip/KGSM-Lib</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/TheKrystalShip/KGSM-Lib</RepositoryUrl>
+    <RepositoryType>GitHub</RepositoryType>
+    <Description>Classlibrary for KGSM Interop</Description>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <NeutralLanguage>en</NeutralLanguage>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RootNamespace>TheKrystalShip.KGSM</RootNamespace>
+    <AssemblyName>TheKrystalShip.KGSM</AssemblyName>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+      <None Include="..\README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+
+</Project>
