@@ -2,7 +2,7 @@ using TheKrystalShip.KGSM.Lib;
 
 namespace TheKrystalShip.KGSM;
 
-public record KgsmResult(int ExitCode, string? Stdout = null, string? Stderr = null)
+public record KgsmResult(int ExitCode, string Stdout = "", string Stderr = "")
 {
     public KgsmResult(ProcessResult pr) : this(pr.ExitCode, pr.Stdout, pr.Stderr)
     {
