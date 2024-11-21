@@ -1,10 +1,23 @@
 ﻿using _pi = TheKrystalShip.KGSM.Lib.ProcessIntrop;
 
+using TheKrystalShip.KGSM.Lib;
+
 namespace TheKrystalShip.KGSM;
 
-public class KgsmInterop(string kgsmPath)
+public class KgsmInterop
 {
-    private string _kgsmPath = kgsmPath;
+    private string _kgsmPath;
+    public KgsmEvents Events { get; private set; }
+
+    public KgsmInterop(string kgsmPath, string kgsmSocketPath)
+    {
+        if (kgsmPath == string.Empty)
+            throw new ArgumentNullException(nameof(kgsmPath));
+
+        _kgsmPath = kgsmPath;
+        Events = new(kgsmSocketPath);
+        Events.Initialize();
+    }
 
     // General
     /// <summary>
