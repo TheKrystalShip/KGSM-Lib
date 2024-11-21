@@ -11,7 +11,7 @@ public class KgsmInterop
 
     public KgsmInterop(string kgsmPath, string kgsmSocketPath)
     {
-        if (kgsmPath == string.Empty)
+        if (string.IsNullOrEmpty(kgsmPath))
             throw new ArgumentNullException(nameof(kgsmPath));
 
         _kgsmPath = kgsmPath;

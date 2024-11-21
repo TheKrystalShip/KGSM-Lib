@@ -77,7 +77,7 @@ public class KgsmEvents : IDisposable
 
     public void RegisterHandler<T>(Func<T, Task> handler) where T : EventDataBase
     {
-        _eventHandlers[typeof(T)] = handler;
+        _eventHandlers[typeof(T)] = async (EventDataBase data) => await handler((T)data);
     }
 
     private async Task OnEventReceivedAsync(string message)
@@ -105,9 +105,9 @@ public class KgsmEvents : IDisposable
 
     private async Task InvokeHandlerAsync(EventDataBase eventData)
     {
-        if (_eventHandlers.TryGetValue(eventData.GetType(), out var handler) && handler is Func<EventDataBase, Task> eventHandler)
+        if (_eventHandlers.TryGetValue(eventData.GetType(), out var handler))
         {
-            await eventHandler.Invoke(eventData);
+            await ((Func<EventDataBase, Task>)handler).Invoke(eventData);
         }
     }
 }
