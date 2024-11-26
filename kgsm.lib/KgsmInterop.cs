@@ -2,6 +2,9 @@
 
 using TheKrystalShip.KGSM.Lib;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace TheKrystalShip.KGSM;
 
 public class KgsmInterop
@@ -86,8 +89,25 @@ public class KgsmInterop
     /// <summary>
     /// Prints a list of all available blueprints
     /// </summary>
-    public KgsmResult GetBlueprints()
-        => _pi.Execute(ref _kgsmPath, "--blueprints");
+    public Dictionary<string, Blueprint> GetBlueprints()
+    {
+        Dictionary<string, Blueprint> blueprints = new();
+        KgsmResult result = _pi.Execute(ref _kgsmPath, "--blueprints", "--detailed", "--json");
+
+        var serializerOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true  
+        };
+        serializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        serializerOptions.Converters.Add(new JsonStringToBoolConverter());
+
+        blueprints = JsonSerializer.Deserialize<Dictionary<string, Blueprint>>(
+            result.Stdout,
+            serializerOptions
+        ) ?? throw new InvalidOperationException("Failed to deserialize response");
+
+        return blueprints;
+    }
 
     /// <summary>
     /// Create an instance of a blueprint
@@ -133,8 +153,25 @@ public class KgsmInterop
     /// <summary>
     /// Prints a list of all instances
     /// </summary>
-    public KgsmResult GetInstances()
-        => _pi.Execute(ref _kgsmPath, "--instances");
+    public Dictionary<string, Instance> GetInstances()
+    {
+        Dictionary<string, Instance> instances = new();
+        KgsmResult result = _pi.Execute(ref _kgsmPath, "--instances", "--detailed", "--json");
+
+        var serializerOptions = new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        serializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+
+        instances = JsonSerializer.Deserialize<Dictionary<string, Instance>>(
+            result.Stdout,
+            serializerOptions
+        ) ?? throw new InvalidOperationException("Failed to deserialize result");
+
+        return instances;
+    }
 
     /// <summary>
     /// Print the last 10 lines for the instance log

@@ -2,10 +2,76 @@ using System.Text.Json;
 
 namespace TheKrystalShip.KGSM.Lib;
 
+public class Blueprint
+{
+    public string Name { get; set; } = "";
+    public string Port { get; set; } = "";
+    public string AppId { get; set; } = "";
+    public bool SteamAccountRequired { get; set; } = false;
+    public string LaunchBin { get; set; } = "";
+    public string LevelName { get; set; } = "";
+    public string InstallSubdirectory { get; set; } = "";
+    public string LaunchArgs { get; set; } = "";
+    public string? StopCommand { get; set; } = null;
+    public string? SaveCommand { get; set; } = null;
+
+    public override string ToString()
+    {
+        return $"Blueprint: {Name}, " +
+               $"Port: {Port}, " +
+               $"AppId: {AppId}, " +
+               $"SteamAccountRequired: {SteamAccountRequired}, " +
+               $"LaunchBin: {LaunchBin}, " +
+               $"LevelName: {LevelName}, " +
+               $"InstallSubdirectory: {InstallSubdirectory}, " +
+               $"LaunchArgs: {LaunchArgs}, " +
+               $"StopCommand: {StopCommand ?? "None"}, " +
+               $"SaveCommand: {SaveCommand ?? "None"}";
+    }
+}
+
+public enum InstanceStatus
+{
+    Active,
+    Inactive
+}
+
 public enum LifecycleManager
 {
     Standalone,
     Systemd
+}
+
+public class Instance
+{
+    public string Name { get; set; } = "";
+    public LifecycleManager LifecycleManager { get; set ;} = LifecycleManager.Standalone;
+    public InstanceStatus Status { get; set; } = InstanceStatus.Inactive;
+    public string? PID { get; set; } = "";
+    public string? LogsDirectory { get; set; } = "";
+    public string Directory { get; set; } = "";
+    public DateTime InstallationDate { get; set; }
+    public string Version { get; set; } = "";
+    public string Blueprint { get; set; } = "";
+    public string? ServiceFile { get; set; } = null;
+    public string? SocketFile { get; set; } = null;
+    public string? FirewallRule { get; set; } = null;
+
+    public override string ToString()
+    {
+        return $"Instance: {Name}, " +
+               $"LifecycleManager: {LifecycleManager}, " +
+               $"Status: {Status}, " +
+               $"PID: {PID ?? "None"}, " +
+               $"LogsDirectory: {LogsDirectory ?? "None"}, " +
+               $"Directory: {Directory}, " +
+               $"InstallationDate: {InstallationDate}, " +
+               $"Version: {Version}, " +
+               $"Blueprint: {Blueprint}, " +
+               $"ServiceFile: {ServiceFile ?? "None"}, " +
+               $"SocketFile: {SocketFile ?? "None"}, " +
+               $"FirewallRule: {FirewallRule ?? "None"}";
+    }
 }
 
 public abstract class EventDataBase { }
