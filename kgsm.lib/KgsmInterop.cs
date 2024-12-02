@@ -65,18 +65,19 @@ public class KgsmInterop
     /// Create a new blueprint
     /// </summary>
     /// <param name="blueprint">Blueprint object populated</param>
-    public KgsmResult CreateBlueprint(KgsmBlueprint blueprint)
-        => _pi.Execute(ref _kgsmPath, "--create-blueprint",
+    public KgsmResult CreateBlueprint(Blueprint blueprint)
+        => _pi.Execute(ref _kgsmPath,
+                "--create-blueprint",
                 "--name", blueprint.Name,
                 "--port", blueprint.Port,
                 "--launch-bin", blueprint.LaunchBin,
                 "--level-name", blueprint.LevelName,
-                "--app-id", blueprint.SteamAppId.ToString(),
+                "--app-id", blueprint.AppId.ToString(),
                 "--steam-auth-level", blueprint.SteamAccountRequired ? "1" : "0",
-                "--install-subdirectory", blueprint.LaunchBinSubdirectory,
-                "--launch-args", blueprint.LaunchBinArgs,
-                "--stop-command", blueprint.StopCommand,
-                "--save-command", blueprint.SaveCommand
+                "--install-subdirectory", blueprint.InstallSubdirectory,
+                "--launch-args", blueprint.LaunchArgs,
+                "--stop-command", blueprint.StopCommand ?? string.Empty,
+                "--save-command", blueprint.SaveCommand ?? string.Empty
             );
 
 
