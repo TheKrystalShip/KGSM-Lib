@@ -42,12 +42,6 @@ public class KgsmInterop
         => _pi.Execute(ref _kgsmPath, "--update");
 
     /// <summary>
-    /// Update KGSM to the latest version, skipping the version check
-    /// </summary>
-    public KgsmResult UpdateForce()
-        => _pi.Execute(ref _kgsmPath, "--update", "--force");
-
-    /// <summary>
     /// Prints the server's public IP address
     /// </summary>
     public KgsmResult GetIp()
@@ -117,8 +111,8 @@ public class KgsmInterop
     /// <param name="installDir">Optional installation directory</param>
     /// <param name="version">Optional version to install</param>
     /// <param name="id">Optional identifier used when creating the instance</param>
-    public KgsmResult Install(string blueprintName, string? installDir = null, string? version = null, string? id = null) {
-
+    public KgsmResult Install(string blueprintName, string? installDir = null, string? version = null, string? id = null) 
+    {
         List<string> args = [];
 
         args.Add("--install");
@@ -199,8 +193,18 @@ public class KgsmInterop
     /// Print if the instance is currently active/running
     /// </summary>
     /// <param name="instance">Instance name</param>
-    public KgsmResult IsActive(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--is-active");
+    public bool IsActive(string instance)
+    {
+        ProcessResult result = _pi.Execute(ref _kgsmPath, "--instance", instance, "--is-active");
+
+        if (result.ExitCode != 0)
+            return false;
+
+        if (result.Stdout.Contains("Inactive"))
+            return false;
+
+        return true;
+    }
 
     /// <summary>
     /// Start the instance
