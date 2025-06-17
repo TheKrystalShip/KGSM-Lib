@@ -1,9 +1,10 @@
-﻿using _pi = TheKrystalShip.KGSM.Lib.ProcessInterop;
-
-using TheKrystalShip.KGSM.Lib;
-
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging.Abstractions;
+using TheKrystalShip.KGSM.Core.Interfaces;
+using TheKrystalShip.KGSM.Core.Models;
+using TheKrystalShip.KGSM.Events;
+using TheKrystalShip.KGSM.Services;
 
 namespace TheKrystalShip.KGSM;
 
@@ -11,11 +12,19 @@ namespace TheKrystalShip.KGSM;
 /// KgsmInterop is a class that provides an interface to interact with the KGSM (Krystal Game Server Manager).
 /// It allows you to perform various operations such as creating blueprints, managing instances,
 /// checking updates, and handling events through a Unix socket.
+/// 
+/// This class is kept for backward compatibility with the previous version of the library.
+/// New code should use the IKgsmClient interface and its implementations.
 /// </summary>
+[Obsolete("This class is kept for backward compatibility. New code should use IKgsmClient interface.")]
 public class KgsmInterop
 {
-    private string _kgsmPath;
-    public KgsmEvents Events { get; private set; }
+    private readonly IKgsmClient _client;
+
+    /// <summary>
+    /// Gets the event service for handling KGSM events.
+    /// </summary>
+    public IEventService Events => _client.Events;
 
     /// <summary>
     /// Initializes a new instance of the KgsmInterop class with the specified KGSM path and socket path.
@@ -23,70 +32,56 @@ public class KgsmInterop
     /// </summary>
     public KgsmInterop(string kgsmPath, string kgsmSocketPath)
     {
+        ArgumentNullException.ThrowIfNull(kgsmPath, nameof(kgsmPath));
         ArgumentNullException.ThrowIfNull(kgsmSocketPath, nameof(kgsmSocketPath));
 
-        _kgsmPath = kgsmPath;
-        Events = new(kgsmSocketPath);
-        Events.Initialize();
-    }
+        // Create the necessary services using the default nulllogger
+        var processRunner = new ProcessRunner(NullLogger<ProcessRunner>.Instance);
+        var socketClient = new UnixSocketClient(kgsmSocketPath, NullLogger<UnixSocketClient>.Instance);
+        var eventService = new EventService(socketClient, NullLogger<EventService>.Instance);
+        var blueprintService = new BlueprintService(processRunner, kgsmPath, NullLogger<BlueprintService>.Instance);
+        var instanceService = new InstanceService(processRunner, kgsmPath, NullLogger<InstanceService>.Instance);
 
-    // General
+        _client = new KgsmClient(
+            kgsmPath,
+            processRunner,
+            blueprintService,
+            instanceService,
+            eventService,
+            NullLogger<KgsmClient>.Instance);
+    }    // General
     /// <summary>
     /// Prints the help message
     /// </summary>
-    public KgsmResult Help()
-        => _pi.Execute(ref _kgsmPath, "--help");
+    public KgsmResult Help() => _client.Help();
 
     /// <summary>
     /// Prints the help message for the interactive mode
     /// </summary>
-    public KgsmResult HelpInteractive()
-        => _pi.Execute(ref _kgsmPath, "--help", "--interactive");
+    public KgsmResult HelpInteractive() => _client.HelpInteractive();
 
     /// <summary>
     /// Update KGSM if a new version is available
     /// </summary>
-    public KgsmResult Update()
-        => _pi.Execute(ref _kgsmPath, "--update");
+    public KgsmResult Update() => _client.UpdateKgsm();
 
     /// <summary>
     /// Prints the server's public IP address
     /// </summary>
-    public KgsmResult GetIp()
-        => _pi.Execute(ref _kgsmPath, "--ip");
+    public KgsmResult GetIp() => _client.GetIp();
 
     /// <summary>
     /// Print the version information for KGSM
     /// </summary>
-    public KgsmResult GetVersion()
-        => _pi.Execute(ref _kgsmPath, "--version");
-
-    // Blueprints
+    public KgsmResult GetVersion() => _client.GetVersion();    // Blueprints
 
     /// <summary>
     /// Prints a list of all available blueprints
     /// </summary>
     public Dictionary<string, Blueprint> GetBlueprints()
     {
-        Dictionary<string, Blueprint> blueprints = new();
-        KgsmResult result = _pi.Execute(ref _kgsmPath, "--blueprints", "--detailed", "--json");
-
-        var serializerOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true  
-        };
-        serializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-        serializerOptions.Converters.Add(new JsonStringToBoolConverter());
-
-        blueprints = JsonSerializer.Deserialize<Dictionary<string, Blueprint>>(
-            result.Stdout,
-            serializerOptions
-        ) ?? throw new InvalidOperationException("Failed to deserialize response");
-
-        return blueprints;
-    }
-
-    /// <summary>
+        return _client.Blueprints.GetAll();
+    }    /// <summary>
     /// Create an instance of a blueprint
     /// </summary>
     /// <param name="blueprintName">Name of the blueprint to install</param>
@@ -95,59 +90,22 @@ public class KgsmInterop
     /// <param name="name">Optional identifier used when creating the instance</param>
     public KgsmResult Install(string blueprintName, string? installDir = null, string? version = null, string? name = null) 
     {
-        List<string> args = [];
-
-        args.Add("--create");
-        args.Add(blueprintName);
-        
-        if (installDir is not null) {
-            args.Add("--install-dir");
-            args.Add(installDir);
-        }
-
-        if (version is not null) {
-            args.Add("--version");
-            args.Add(version);
-        }
-
-        if (name is not null) {
-            args.Add("--name");
-            args.Add(name);
-        }
-
-        return _pi.Execute(ref _kgsmPath, [.. args]);
-    }
-
-    // Instances
+        return _client.Instances.Install(blueprintName, installDir, version, name);
+    }    // Instances
 
     /// <summary>
     /// Uninstall an instance
     /// </summary>
     /// <param name="instance">Instance name</param>
-    public KgsmResult Uninstall(string instance)
-        => _pi.Execute(ref _kgsmPath, "--uninstall", instance);
+    public KgsmResult Uninstall(string instance) 
+        => _client.Instances.Uninstall(instance);
 
     /// <summary>
     /// Prints a list of all instances
     /// </summary>
     public Dictionary<string, Instance> GetInstances()
     {
-        Dictionary<string, Instance> instances = new();
-        KgsmResult result = _pi.Execute(ref _kgsmPath, "--instances", "--detailed", "--json");
-
-        var serializerOptions = new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        serializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-
-        instances = JsonSerializer.Deserialize<Dictionary<string, Instance>>(
-            result.Stdout,
-            serializerOptions
-        ) ?? throw new InvalidOperationException("Failed to deserialize result");
-
-        return instances;
+        return _client.Instances.GetAll();
     }
 
     /// <summary>
@@ -155,101 +113,89 @@ public class KgsmInterop
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult GetLogs(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--logs");
+        => _client.Instances.GetLogs(instance);
 
     /// <summary>
     /// Print a detailed message about the current status of the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Status(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--status");
+        => _client.Instances.GetStatus(instance);
 
     /// <summary>
     /// Print a detailed message with information about the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Info(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--info");
+        => _client.Instances.GetInfo(instance);
 
     /// <summary>
     /// Print if the instance is currently active/running
     /// </summary>
     /// <param name="instance">Instance name</param>
     public bool IsActive(string instance)
-    {
-        ProcessResult result = _pi.Execute(ref _kgsmPath, "--instance", instance, "--is-active");
-
-        if (result.ExitCode != 0)
-            return false;
-
-        if (result.Stdout.Contains("Inactive"))
-            return false;
-
-        return true;
-    }
+        => _client.Instances.IsActive(instance);
 
     /// <summary>
     /// Start the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Start(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--start");
-
-    /// <summary>
+        => _client.Instances.Start(instance);    /// <summary>
     /// Stop the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Stop(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--stop");
+        => _client.Instances.Stop(instance);
 
     /// <summary>
     /// Restart the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Restart(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--restart");
+        => _client.Instances.Restart(instance);
 
     /// <summary>
     /// Print the installed version of the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult GetInstalledVersion(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--version", "--installed");
+        => _client.Instances.GetInstalledVersion(instance);
 
     /// <summary>
     /// Print the latest available version of the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult GetLatestVersion(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--version", "--latest");
+        => _client.Instances.GetLatestVersion(instance);
 
     /// <summary>
     /// Check if there's an update available for the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult CheckUpdate(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--check-update");
+        => _client.Instances.CheckUpdate(instance);
 
     /// <summary>
     /// Run the update process for the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult Update(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--update");
+        => _client.Instances.Update(instance);
 
     /// <summary>
     /// Print a list of the created instance backups
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult GetBackups(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--backups");
+        => _client.Instances.GetBackups(instance);
 
     /// <summary>
     /// Create a new backup for the instance
     /// </summary>
     /// <param name="instance">Instance name</param>
     public KgsmResult CreateBackup(string instance)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--create-backup");
+        => _client.Instances.CreateBackup(instance);
 
     /// <summary>
     /// Restore a specific backup for the instance
@@ -260,7 +206,7 @@ public class KgsmInterop
     /// Call GetBackups in order to get a list of available options
     /// </param>
     public KgsmResult RestoreBackup(string instance, string backupName)
-        => _pi.Execute(ref _kgsmPath, "--instance", instance, "--restore-backup", backupName);
+        => _client.Instances.RestoreBackup(instance, backupName);
 
     /// <summary>
     /// Execute Ad-Hoc commands
@@ -270,5 +216,5 @@ public class KgsmInterop
     /// <param name="args">Arguments to send to KGSM</param>
     /// <returns>KgsmResult</returns>
     public KgsmResult AdHoc(params string[] args)
-        => _pi.Execute(ref _kgsmPath, args);
+        => _client.AdHoc(args);
 }
