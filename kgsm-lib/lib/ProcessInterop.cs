@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace TheKrystalShip.KGSM.Lib;
 
-public class ProcessIntrop
+public class ProcessInterop
 {
     public static ProcessResult Execute(ref string command, params string[] args)
     {

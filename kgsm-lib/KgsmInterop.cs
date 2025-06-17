@@ -1,4 +1,4 @@
-﻿using _pi = TheKrystalShip.KGSM.Lib.ProcessIntrop;
+﻿using _pi = TheKrystalShip.KGSM.Lib.ProcessInterop;
 
 using TheKrystalShip.KGSM.Lib;
 
@@ -7,15 +7,23 @@ using System.Text.Json.Serialization;
 
 namespace TheKrystalShip.KGSM;
 
+/// <summary>
+/// KgsmInterop is a class that provides an interface to interact with the KGSM (Krystal Game Server Manager).
+/// It allows you to perform various operations such as creating blueprints, managing instances,
+/// checking updates, and handling events through a Unix socket.
+/// </summary>
 public class KgsmInterop
 {
     private string _kgsmPath;
     public KgsmEvents Events { get; private set; }
 
+    /// <summary>
+    /// Initializes a new instance of the KgsmInterop class with the specified KGSM path and socket path.
+    /// Throws an ArgumentNullException if the kgsmPath is null or empty.
+    /// </summary>
     public KgsmInterop(string kgsmPath, string kgsmSocketPath)
     {
-        if (string.IsNullOrEmpty(kgsmPath))
-            throw new ArgumentNullException(nameof(kgsmPath));
+        ArgumentNullException.ThrowIfNull(kgsmSocketPath, nameof(kgsmSocketPath));
 
         _kgsmPath = kgsmPath;
         Events = new(kgsmSocketPath);
@@ -56,32 +64,6 @@ public class KgsmInterop
     // Blueprints
 
     /// <summary>
-    /// Create a new blueprint
-    /// </summary>
-    /// <param name="blueprint">Blueprint object populated</param>
-    public KgsmResult CreateBlueprint(Blueprint blueprint)
-        => _pi.Execute(ref _kgsmPath,
-                "--create-blueprint",
-                "--name", blueprint.Name,
-                "--port", blueprint.Port,
-                "--launch-bin", blueprint.LaunchBin,
-                "--level-name", blueprint.LevelName,
-                "--app-id", blueprint.AppId.ToString(),
-                "--steam-auth-level", blueprint.SteamAccountRequired ? "1" : "0",
-                "--install-subdirectory", blueprint.InstallSubdirectory,
-                "--launch-args", blueprint.LaunchArgs,
-                "--stop-command", blueprint.StopCommand ?? string.Empty,
-                "--save-command", blueprint.SaveCommand ?? string.Empty
-            );
-
-
-    /// <summary>
-    /// Print the help message for creating a new blueprint
-    /// </summary>
-    public KgsmResult CreateBlueprintHelp()
-        => _pi.Execute(ref _kgsmPath, "--create-blueprint", "--help");
-
-    /// <summary>
     /// Prints a list of all available blueprints
     /// </summary>
     public Dictionary<string, Blueprint> GetBlueprints()
@@ -110,12 +92,12 @@ public class KgsmInterop
     /// <param name="blueprintName">Name of the blueprint to install</param>
     /// <param name="installDir">Optional installation directory</param>
     /// <param name="version">Optional version to install</param>
-    /// <param name="id">Optional identifier used when creating the instance</param>
-    public KgsmResult Install(string blueprintName, string? installDir = null, string? version = null, string? id = null) 
+    /// <param name="name">Optional identifier used when creating the instance</param>
+    public KgsmResult Install(string blueprintName, string? installDir = null, string? version = null, string? name = null) 
     {
         List<string> args = [];
 
-        args.Add("--install");
+        args.Add("--create");
         args.Add(blueprintName);
         
         if (installDir is not null) {
@@ -128,9 +110,9 @@ public class KgsmInterop
             args.Add(version);
         }
 
-        if (id is not null) {
-            args.Add("--id");
-            args.Add(id);
+        if (name is not null) {
+            args.Add("--name");
+            args.Add(name);
         }
 
         return _pi.Execute(ref _kgsmPath, [.. args]);

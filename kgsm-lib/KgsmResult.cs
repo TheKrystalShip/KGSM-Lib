@@ -8,6 +8,8 @@ public record KgsmResult(int ExitCode, string Stdout = "", string Stderr = "")
     {
     }
 
+    // Allow conversion from ProcessResult to KgsmResult
+    // and vice versa
     public static implicit operator ProcessResult(KgsmResult x) => x;
     public static implicit operator KgsmResult(ProcessResult x) => new(x);
 }
